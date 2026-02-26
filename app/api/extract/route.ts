@@ -1,30 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { extractEvents } from '@/lib/events'
+import { createWorker } from 'tesseract.js'
 
-export const maxDuration = 30
-
-async function ocrWithVision(base64: string): Promise<string> {
-  const apiKey = process.env.GOOGLE_VISION_API_KEY
-  if (!apiKey) throw new Error('NO_KEY')
-
-  const res = await fetch(
-    `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        requests: [{
-          image: { content: base64 },
-          features: [{ type: 'TEXT_DETECTION', maxResults: 1 }],
-          imageContext: { languageHints: ['ja', 'ja-t-i0-handwrit'] }
-        }]
-      })
-    }
-  )
-  const data = await res.json()
-  if (data.error) throw new Error(data.error.message)
-  return data.responses?.[0]?.fullTextAnnotation?.text ?? ''
-}
+export const maxDuration = 60
 
 const DEMO_TEXT = `
 令和6年度 行事予定（前期）
@@ -40,6 +18,41 @@ const DEMO_TEXT = `
 12月23日（月）　2学期終業式
 `
 
+async function ocrTesseract(buffer: Buffer): Promise<string> {
+  const worker = await createWorker('jpn', 1, {
+    cachePath: '/tmp/tessdata',
+    logger: () => {},
+  })
+  try {
+    const { data: { text } } = await worker.recognize(buffer)
+    return text
+  } finally {
+    await worker.terminate()
+  }
+}
+
+async function ocrVision(base64: string): Promise<string> {
+  const apiKey = process.env.GOOGLE_VISION_API_KEY
+  if (!apiKey) throw new Error('NO_KEY')
+  const res = await fetch(
+    `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requests: [{
+          image: { content: base64 },
+          features: [{ type: 'TEXT_DETECTION', maxResults: 1 }],
+          imageContext: { languageHints: ['ja'] }
+        }]
+      })
+    }
+  )
+  const data = await res.json()
+  if (data.error) throw new Error(data.error.message)
+  return data.responses?.[0]?.fullTextAnnotation?.text ?? ''
+}
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
@@ -52,23 +65,18 @@ export async function POST(req: NextRequest) {
       rawText = DEMO_TEXT
     } else {
       const bytes = await file.arrayBuffer()
-      const base64 = Buffer.from(bytes).toString('base64')
+      const buffer = Buffer.from(bytes)
+      const base64 = buffer.toString('base64')
 
+      // Try Google Vision first, fall back to Tesseract
       try {
-        rawText = await ocrWithVision(base64)
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : ''
-        if (msg === 'NO_KEY') {
-          // Fall back to demo for now
-          rawText = DEMO_TEXT
-        } else {
-          throw e
-        }
+        rawText = await ocrVision(base64)
+      } catch {
+        rawText = await ocrTesseract(buffer)
       }
     }
 
     const events = extractEvents(rawText)
-
     return NextResponse.json({ events, rawText })
   } catch (err) {
     console.error('[extract]', err)
