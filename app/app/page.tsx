@@ -3,7 +3,7 @@ import { useState, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { ExtractedEvent, buildCalendarLink, formatDisplayDate } from '@/lib/events'
 
-type State = 'idle' | 'loading' | 'done' | 'error'
+type State = 'idle' | 'loading' | 'done' | 'error' | 'quota'
 
 export default function AppPage() {
   const [state, setState] = useState<State>('idle')
@@ -31,6 +31,11 @@ export default function AppPage() {
 
       const res = await fetch('/api/extract', { method: 'POST', body: fd })
       const data = await res.json()
+
+      if (res.status === 429 && data.error === 'QUOTA_EXCEEDED') {
+        setState('quota')
+        return
+      }
       if (data.error) throw new Error(data.error)
       setEvents(data.events)
       setState('done')
@@ -68,7 +73,7 @@ export default function AppPage() {
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/" className="font-black text-lg text-blue-600">📄 おたよりん</Link>
           <Link href="/pricing" className="text-xs bg-blue-50 text-blue-600 font-bold px-3 py-1.5 rounded-full hover:bg-blue-100">
-            ファミリープラン ¥480/月
+            スタンダード ¥380/月
           </Link>
         </div>
       </header>
@@ -135,6 +140,38 @@ export default function AppPage() {
               <p>✓ 日付を抽出中</p>
               <p className="animate-pulse">⟳ イベントを整理中...</p>
             </div>
+          </div>
+        )}
+
+        {/* Quota exceeded */}
+        {state === 'quota' && (
+          <div className="text-center py-16">
+            <div className="text-6xl mb-4">🔒</div>
+            <p className="text-gray-900 font-black text-xl">今月の無料枠を使い切りました</p>
+            <p className="text-gray-500 text-sm mt-2 leading-relaxed">
+              無料プランは月1件まで読み取れます。<br />
+              スタンダードプランなら無制限＋アーカイブ保存もできます。
+            </p>
+            <div className="mt-8 bg-blue-600 rounded-3xl p-6 text-white text-left">
+              <p className="text-sm font-bold text-blue-200 uppercase mb-2">スタンダードプラン</p>
+              <p className="text-3xl font-black">¥380<span className="text-base font-normal text-blue-200">/月</span></p>
+              <ul className="mt-4 space-y-2 text-sm">
+                <li className="flex gap-2"><span className="text-yellow-300">✓</span> 無制限読み取り</li>
+                <li className="flex gap-2"><span className="text-yellow-300">✓</span> 全件アーカイブ保存</li>
+                <li className="flex gap-2"><span className="text-yellow-300">✓</span> 全文検索</li>
+                <li className="flex gap-2"><span className="text-yellow-300">✓</span> 持ち物リスト自動抽出</li>
+                <li className="flex gap-2"><span className="text-yellow-300">✓</span> LINE週次まとめ配信</li>
+              </ul>
+              <Link
+                href="/pricing"
+                className="block mt-6 py-4 bg-white text-blue-600 font-black text-center rounded-xl hover:bg-blue-50 text-lg"
+              >
+                アップグレードする →
+              </Link>
+            </div>
+            <button onClick={reset} className="mt-6 text-gray-400 text-sm hover:text-gray-600">
+              ← 戻る
+            </button>
           </div>
         )}
 
@@ -210,13 +247,14 @@ export default function AppPage() {
               })}
             </div>
 
-            {/* Added summary */}
-            {added.size > 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-center">
-                <p className="text-blue-700 font-bold">📅 {added.size}件をカレンダーに追加しました</p>
-                <p className="text-blue-500 text-xs mt-1">前日18:00にリマインダーが届きます（ファミリープランのみ）</p>
-              </div>
-            )}
+            {/* Upgrade nudge */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4">
+              <p className="text-blue-800 font-bold text-sm">📚 お便りを保存しておきたいですか？</p>
+              <p className="text-blue-600 text-xs mt-1">スタンダードプラン（¥380/月）で全件アーカイブ＋全文検索が使えます。</p>
+              <Link href="/pricing" className="inline-block mt-2 text-xs font-bold text-blue-600 underline">
+                詳しく見る →
+              </Link>
+            </div>
 
             <button onClick={reset} className="w-full py-3 text-gray-400 text-sm hover:text-gray-600">
               別のお便りを読み取る →
