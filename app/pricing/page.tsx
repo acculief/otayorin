@@ -3,23 +3,22 @@ import { useState } from 'react'
 import Link from 'next/link'
 
 const FREE_FEATURES = [
-  '月3件まで読み取り',
-  '1人のみ',
+  '月1件まで読み取り',
   'Googleカレンダー追加（ディープリンク）',
 ]
 const FREE_LIMITS = [
-  'リマインダーなし',
-  '家族共有なし',
-  '履歴保存なし',
+  'アーカイブ保存なし',
+  '全文検索なし',
+  '持ち物リスト抽出なし',
+  'LINE週次まとめなし',
 ]
 
 const PAID_FEATURES = [
   '無制限読み取り',
-  '家族5人まで共有',
-  '前日・3日前リマインダー',
-  'お便り履歴保存',
-  'Googleカレンダー自動同期',
-  '優先サポート',
+  '全件アーカイブ保存',
+  '全文検索（いつのお便りか即検索）',
+  '持ち物リスト自動抽出',
+  'LINE週次まとめ配信',
 ]
 
 export default function PricingPage() {
@@ -68,7 +67,7 @@ export default function PricingPage() {
             <div className="mb-4">
               <p className="text-sm font-bold text-gray-500 uppercase tracking-wide">無料プラン</p>
               <p className="text-4xl font-black text-gray-900 mt-1">¥0<span className="text-lg font-normal text-gray-400">/月</span></p>
-              <p className="text-gray-400 text-sm mt-1">まずは試してみたい方に</p>
+              <p className="text-gray-400 text-sm mt-1">まずは1回だけ試してみたい方に</p>
             </div>
             <div className="space-y-2 mb-6">
               {FREE_FEATURES.map((f) => (
@@ -90,15 +89,15 @@ export default function PricingPage() {
             </Link>
           </div>
 
-          {/* Family Plan */}
+          {/* Standard Plan */}
           <div className="bg-blue-600 rounded-3xl p-6 border-2 border-blue-600 shadow-lg text-white relative overflow-hidden">
             <div className="absolute top-4 right-4 bg-yellow-400 text-yellow-900 text-xs font-black px-2 py-1 rounded-full">
               おすすめ
             </div>
             <div className="mb-4">
-              <p className="text-sm font-bold text-blue-200 uppercase tracking-wide">ファミリープラン</p>
-              <p className="text-4xl font-black mt-1">¥480<span className="text-lg font-normal text-blue-200">/月</span></p>
-              <p className="text-blue-200 text-sm mt-1">コーヒー1杯より安く、ケンカが減る</p>
+              <p className="text-sm font-bold text-blue-200 uppercase tracking-wide">スタンダードプラン</p>
+              <p className="text-4xl font-black mt-1">¥380<span className="text-lg font-normal text-blue-200">/月</span></p>
+              <p className="text-blue-200 text-sm mt-1">コーヒー1杯より安く、探す手間ゼロ</p>
             </div>
             <div className="space-y-2 mb-6">
               {PAID_FEATURES.map((f) => (
@@ -134,12 +133,16 @@ export default function PricingPage() {
           <h3 className="font-bold text-gray-700 mb-3 text-sm">よくある質問</h3>
           <div className="space-y-4 text-sm">
             <div>
-              <p className="font-bold text-gray-700">どんなお便りに対応していますか？</p>
-              <p className="text-gray-500 mt-1">学校・保育園・幼稚園・習い事・医療機関など、日付が書かれた書類に対応しています。</p>
+              <p className="font-bold text-gray-700">無料プランはどれくらい使えますか？</p>
+              <p className="text-gray-500 mt-1">月1件まで読み取れます。試してみてから決めたい方におすすめです。</p>
             </div>
             <div>
-              <p className="font-bold text-gray-700">家族共有はどうやるの？</p>
-              <p className="text-gray-500 mt-1">共有リンクを送るだけ。パパ・ママ両方のGoogleカレンダーに同じイベントを追加できます。</p>
+              <p className="font-bold text-gray-700">アーカイブとは？</p>
+              <p className="text-gray-500 mt-1">読み取ったお便りをすべて保存し、後から全文検索できます。「あのイベントいつだっけ？」が即解決。</p>
+            </div>
+            <div>
+              <p className="font-bold text-gray-700">LINE週次まとめとは？</p>
+              <p className="text-gray-500 mt-1">毎週日曜夜に、翌週の予定をLINEで自動配信。見落とし防止に最適です。</p>
             </div>
             <div>
               <p className="font-bold text-gray-700">解約はいつでもできますか？</p>
