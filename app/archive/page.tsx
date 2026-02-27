@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import ArchiveClient from './ArchiveClient'
 
 export const metadata: Metadata = {
   title: 'アーカイブ',
@@ -13,9 +14,13 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-function formatDate(iso: string) {
-  const d = new Date(iso)
-  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+async function checkIsPremium(userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('otayorin_users')
+    .select('plan')
+    .eq('email', userId)
+    .single()
+  return data?.plan === 'standard'
 }
 
 export default async function ArchivePage() {
@@ -28,15 +33,20 @@ export default async function ArchivePage() {
     event_count: number
     raw_text: string
   }> = []
+  let isPremium = false
 
   if (userId) {
-    const { data } = await supabase
-      .from('otayorin_newsletters')
-      .select('id, created_at, event_count, raw_text')
-      .eq('user_email', userId)
-      .order('created_at', { ascending: false })
-      .limit(50)
-    newsletters = data ?? []
+    const [newslettersResult, premiumResult] = await Promise.all([
+      supabase
+        .from('otayorin_newsletters')
+        .select('id, created_at, event_count, raw_text')
+        .eq('user_email', userId)
+        .order('created_at', { ascending: false })
+        .limit(200),
+      checkIsPremium(userId),
+    ])
+    newsletters = newslettersResult.data ?? []
+    isPremium = premiumResult
   }
 
   return (
@@ -66,39 +76,8 @@ export default async function ArchivePage() {
             </Link>
           </div>
         ) : (
-          <div className="space-y-3">
-            <p className="text-sm text-gray-500">{newsletters.length}件のお便り</p>
-            {newsletters.map((n) => {
-              const preview = n.raw_text
-                .replace(/\n+/g, ' ')
-                .trim()
-                .slice(0, 60)
-              return (
-                <div key={n.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-gray-400">{formatDate(n.created_at)}</p>
-                      <p className="text-sm text-gray-700 mt-1 leading-relaxed line-clamp-2">{preview}...</p>
-                    </div>
-                    <div className="flex-shrink-0 text-right">
-                      <span className="inline-block bg-blue-50 text-blue-600 text-xs font-bold px-2 py-1 rounded-lg">
-                        📅 {n.event_count}件
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <ArchiveClient newsletters={newsletters} isPremium={isPremium} />
         )}
-
-        <div className="mt-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4">
-          <p className="text-blue-800 font-bold text-sm">🔍 アーカイブを全文検索したいですか？</p>
-          <p className="text-blue-600 text-xs mt-1">スタンダードプラン（¥380/月）で全文検索・無制限保存が使えます。</p>
-          <Link href="/pricing" className="inline-block mt-2 text-xs font-bold text-blue-600 underline">
-            詳しく見る →
-          </Link>
-        </div>
       </main>
     </div>
   )
