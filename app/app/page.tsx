@@ -2,12 +2,14 @@
 import { useState, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { ExtractedEvent, buildCalendarLink, formatDisplayDate } from '@/lib/events'
+import { ExtractedItem } from '@/lib/items'
 
 type State = 'idle' | 'loading' | 'done' | 'error' | 'quota'
 
 export default function AppPage() {
   const [state, setState] = useState<State>('idle')
   const [events, setEvents] = useState<ExtractedEvent[]>([])
+  const [items, setItems] = useState<ExtractedItem[]>([])
   const [preview, setPreview] = useState<string | null>(null)
   const [added, setAdded] = useState<Set<string>>(new Set())
   const [allAdded, setAllAdded] = useState(false)
@@ -17,6 +19,7 @@ export default function AppPage() {
   const process = useCallback(async (file: File | null, demo = false) => {
     setState('loading')
     setEvents([])
+    setItems([])
     setAdded(new Set())
     setAllAdded(false)
 
@@ -37,7 +40,8 @@ export default function AppPage() {
         return
       }
       if (data.error) throw new Error(data.error)
-      setEvents(data.events)
+      setEvents(data.events ?? [])
+      setItems(data.items ?? [])
       setState('done')
     } catch {
       setState('error')
@@ -62,24 +66,28 @@ export default function AppPage() {
     setState('idle')
     setPreview(null)
     setEvents([])
+    setItems([])
     setAdded(new Set())
     setAllAdded(false)
   }
 
   return (
     <div className="min-h-screen bg-[#F8FAFF]">
-      {/* Header */}
       <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/" className="font-black text-lg text-blue-600">📄 おたよりん</Link>
-          <Link href="/pricing" className="text-xs bg-blue-50 text-blue-600 font-bold px-3 py-1.5 rounded-full hover:bg-blue-100">
-            スタンダード ¥380/月
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/archive" className="text-xs text-gray-400 hover:text-gray-600 font-medium hidden sm:block">
+              履歴
+            </Link>
+            <Link href="/pricing" className="text-xs bg-blue-50 text-blue-600 font-bold px-3 py-1.5 rounded-full hover:bg-blue-100">
+              ¥380/月
+            </Link>
+          </div>
         </div>
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-8">
-        {/* Upload */}
         {state === 'idle' && (
           <div className="space-y-4">
             <div>
@@ -123,7 +131,6 @@ export default function AppPage() {
           </div>
         )}
 
-        {/* Loading */}
         {state === 'loading' && (
           <div className="text-center py-24">
             <div className="relative w-20 h-20 mx-auto mb-6">
@@ -143,7 +150,6 @@ export default function AppPage() {
           </div>
         )}
 
-        {/* Quota exceeded */}
         {state === 'quota' && (
           <div className="text-center py-16">
             <div className="text-6xl mb-4">🔒</div>
@@ -175,7 +181,6 @@ export default function AppPage() {
           </div>
         )}
 
-        {/* Error */}
         {state === 'error' && (
           <div className="text-center py-16">
             <div className="text-5xl mb-4">😢</div>
@@ -187,69 +192,91 @@ export default function AppPage() {
           </div>
         )}
 
-        {/* Results */}
         {state === 'done' && (
           <div className="space-y-4">
-            {/* Summary bar */}
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center justify-between">
               <div>
                 <p className="font-black text-gray-900 text-lg">{events.length}件のイベントを検出</p>
-                <p className="text-gray-400 text-xs mt-0.5">Googleカレンダーに追加できます</p>
+                <p className="text-gray-400 text-xs mt-0.5">
+                  {items.length > 0 ? `持ち物 ${items.length}点も抽出` : 'Googleカレンダーに追加できます'}
+                </p>
               </div>
               <button
                 onClick={addAll}
-                disabled={allAdded}
-                className={`font-bold text-sm px-4 py-2.5 rounded-xl transition-all ${allAdded ? 'bg-gray-100 text-gray-400' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'}`}
+                disabled={allAdded || events.length === 0}
+                className={`font-bold text-sm px-4 py-2.5 rounded-xl transition-all ${allAdded || events.length === 0 ? 'bg-gray-100 text-gray-400' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'}`}
               >
                 {allAdded ? '✅ 全件追加済み' : '📅 全件追加'}
               </button>
             </div>
 
-            {/* Event cards */}
-            <div className="space-y-3">
-              {events.map((event) => {
-                const isAdded = added.has(event.id)
-                return (
-                  <div
-                    key={event.id}
-                    className={`bg-white rounded-2xl p-4 shadow-sm border-2 transition-all ${isAdded ? 'border-blue-200 bg-blue-50/30' : 'border-gray-100'}`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className="text-2xl mt-0.5">{event.icon}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-gray-900">{event.title}</p>
-                        <div className="flex flex-wrap gap-3 mt-1">
-                          <span className="text-blue-600 text-sm font-medium">
-                            📅 {formatDisplayDate(event.date)}
-                          </span>
-                          {event.startTime && (
-                            <span className="text-gray-500 text-sm">
-                              ⏰ {event.startTime}{event.endTime ? `〜${event.endTime}` : ''}
+            {events.length > 0 && (
+              <div className="space-y-3">
+                {events.map((event) => {
+                  const isAdded = added.has(event.id)
+                  return (
+                    <div
+                      key={event.id}
+                      className={`bg-white rounded-2xl p-4 shadow-sm border-2 transition-all ${isAdded ? 'border-blue-200 bg-blue-50/30' : 'border-gray-100'}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="text-2xl mt-0.5">{event.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-gray-900">{event.title}</p>
+                          <div className="flex flex-wrap gap-3 mt-1">
+                            <span className="text-blue-600 text-sm font-medium">
+                              📅 {formatDisplayDate(event.date)}
                             </span>
-                          )}
+                            {event.startTime && (
+                              <span className="text-gray-500 text-sm">
+                                ⏰ {event.startTime}{event.endTime ? `〜${event.endTime}` : ''}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        {event.note && (
-                          <p className="text-gray-400 text-xs mt-1.5 leading-relaxed">{event.note}</p>
-                        )}
+                        <a
+                          href={buildCalendarLink(event)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => addEvent(event.id)}
+                          className={`flex-shrink-0 text-xs font-bold px-3 py-2 rounded-xl transition-all whitespace-nowrap ${isAdded ? 'bg-blue-100 text-blue-400' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'}`}
+                        >
+                          {isAdded ? '✅ 追加済み' : 'カレンダーに追加'}
+                        </a>
                       </div>
-                      <a
-                        href={buildCalendarLink(event)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={() => addEvent(event.id)}
-                        className={`flex-shrink-0 text-xs font-bold px-3 py-2 rounded-xl transition-all whitespace-nowrap ${isAdded ? 'bg-blue-100 text-blue-400' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'}`}
-                      >
-                        {isAdded ? '✅ 追加済み' : 'カレンダーに\n追加'}
-                      </a>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+            )}
 
-            {/* Upgrade nudge */}
+            {items.length > 0 && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-amber-100">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">🎒</span>
+                  <p className="font-black text-gray-900">持ち物リスト（{items.length}点）</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-2 bg-amber-50 rounded-xl px-3 py-2">
+                      <span className="text-lg">{item.icon}</span>
+                      <span className="text-sm font-medium text-gray-800">{item.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {events.length === 0 && items.length === 0 && (
+              <div className="text-center py-8 bg-white rounded-2xl border border-gray-100">
+                <p className="text-4xl mb-3">🔍</p>
+                <p className="text-gray-700 font-bold">日程を検出できませんでした</p>
+                <p className="text-gray-400 text-sm mt-1">別の写真で試してみてください</p>
+              </div>
+            )}
+
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4">
-              <p className="text-blue-800 font-bold text-sm">📚 お便りを保存しておきたいですか？</p>
+              <p className="text-blue-800 font-bold text-sm">📚 お便りを後から探せたら便利じゃないですか？</p>
               <p className="text-blue-600 text-xs mt-1">スタンダードプラン（¥380/月）で全件アーカイブ＋全文検索が使えます。</p>
               <Link href="/pricing" className="inline-block mt-2 text-xs font-bold text-blue-600 underline">
                 詳しく見る →
