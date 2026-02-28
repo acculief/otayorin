@@ -10,6 +10,7 @@ export const metadata: Metadata = {
     template: '%s | おたよりん',
   },
   description: '学校・保育園のお便りを写真に撮るだけ。Googleカレンダーに自動登録。持ち物リストも自動抽出。手入力ゼロ。月380円から。',
+  verification: { google: '0uJTSoLifNf9F30GBAdAstHG5n6Ci6kGC29csJZbdRM' },
   openGraph: {
     title: 'おたよりん｜学校のお便りを写真1枚でカレンダー登録',
     description: '写真1枚でGoogleカレンダーに自動登録。持ち物リストも自動抽出。手入力ゼロ。',
