@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /app/
+
+Sitemap: https://otayorin.vercel.app/sitemap.xml
